@@ -1,14 +1,19 @@
 {
-  "name": "react-example",
+  "name": "chemvistas",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "分子视界 ChemVistas — 交互式三维化学模型、量子电子云、118 元素周期表与三维化学反应模拟器",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
-    "preview": "vite preview",
-    "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "build:gh-pages": "VITE_BASE_PATH=./ vite build",
+    "build:release": "bash scripts/build-release.sh",
+    "preview": "vite preview --port=4173",
+    "test": "tsx --test src/chemistry/calculations.test.ts",
+    "lint": "tsc --noEmit",
+    "check": "npm run lint && npm run test",
+    "clean": "rm -rf dist release server.js"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
