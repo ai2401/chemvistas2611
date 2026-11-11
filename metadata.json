@@ -1,0 +1,6 @@
+{
+  "name": "分子视界 — 化学三维模型与元素图谱",
+  "description": "交互式三维化学分子与原子结构展示平台，支持多模式旋转观察、键长键角测量与118种元素全属性检索。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
