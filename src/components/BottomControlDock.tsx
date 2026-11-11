@@ -14,6 +14,7 @@ import {
   Sparkles,
   Trash2,
   Plus,
+  Grid,
 } from 'lucide-react';
 import {
   MOLECULE_CATEGORY_LABELS,
@@ -49,6 +50,7 @@ interface BottomControlDockProps {
   moleculeCategoryFilter: MoleculeCategory | 'all';
   onChangeMoleculeCategory: (cat: MoleculeCategory | 'all') => void;
   onOpenImportModal: () => void;
+  onOpenCatalog?: () => void;
   activeElement: ChemicalElement;
   onSelectElement: (el: ChemicalElement) => void;
   renderStyle: RenderStyle;
@@ -96,6 +98,7 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
   moleculeCategoryFilter,
   onChangeMoleculeCategory,
   onOpenImportModal,
+  onOpenCatalog,
   activeElement,
   onSelectElement,
   renderStyle,
@@ -219,6 +222,17 @@ export const BottomControlDock: React.FC<BottomControlDockProps> = ({
                     <Upload className="w-3.5 h-3.5" />
                     <span>导入 / PubChem</span>
                   </button>
+
+                  {onOpenCatalog && (
+                    <button
+                      type="button"
+                      onClick={onOpenCatalog}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-200 bg-[#090D16] hover:border-slate-600 border border-slate-800 rounded-lg transition-colors whitespace-nowrap shrink-0"
+                    >
+                      <Grid className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>结构图鉴</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* 3D Interactive Tool Mode Switch + Camera Presets */}

@@ -43,8 +43,14 @@ import { PeriodicTableView } from './components/PeriodicTableView';
 import { MoleculeCatalogView } from './components/MoleculeCatalogModal';
 import { ImportPubChemModal } from './components/ImportPubChemModal';
 import { ReactionSimulatorView } from './components/ReactionSimulatorView';
+import { HomeShowcaseView } from './components/HomeShowcaseView';
+import {
+  ShowcaseTargetDestination,
+  toStageRenderStyle,
+} from './chemistry/homeShowcase';
 
 type AppView =
+  | 'home'
   | 'molecule-3d'
   | 'atom-3d'
   | 'reaction-sim'
@@ -54,7 +60,12 @@ type AppView =
 export default function App() {
   const stageRef = useRef<ChemistryStage3DHandle | null>(null);
 
-  const [activeView, setActiveView] = useState<AppView>('molecule-3d');
+  const [activeView, setActiveView] = useState<AppView>('home');
+  const [reactionJumpState, setReactionJumpState] = useState<{
+    reactantAId: string;
+    reactantBId: string;
+    nonce: number;
+  }>({ reactantAId: 'methane', reactantBId: 'oxygen', nonce: 0 });
   const [customMolecules, setCustomMolecules] = useState<MoleculeModel[]>([]);
   const [selectedMolecule, setSelectedMolecule] = useState<MoleculeModel>(
     () => MOLECULE_BY_ID['caffeine']
@@ -309,16 +320,56 @@ export default function App() {
     stageRef.current?.setCameraPreset(preset);
   }, []);
 
+  const handleNavigateFromHome = useCallback(
+    (dest: ShowcaseTargetDestination) => {
+      if (dest.kind === 'molecule') {
+        const mol =
+          MOLECULE_BY_ID[dest.moleculeId] ?? MOLECULE_BY_ID['caffeine'];
+        setRenderStyle(toStageRenderStyle(dest.renderStyle));
+        setShowDipoleVector(Boolean(dest.showDipoleVector));
+        setToolMode('inspect');
+        setInspectorTab('molecule');
+        handleSelectMolecule(mol);
+        return;
+      }
+
+      if (dest.kind === 'atom') {
+        const el =
+          ELEMENT_BY_SYMBOL[dest.elementSymbol] ?? ELEMENT_BY_SYMBOL['C'];
+        setActiveElement(el);
+        setAtomViewMode(dest.atomViewMode);
+        setQuantumOrbitalId(
+          dest.quantumOrbitalId ?? getDefaultOrbitalForElement(el)
+        );
+        setInspectorTab('element');
+        setActiveView('atom-3d');
+        return;
+      }
+
+      if (dest.kind === 'reaction') {
+        setReactionJumpState((prev) => ({
+          reactantAId: dest.reactantAId,
+          reactantBId: dest.reactantBId,
+          nonce: prev.nonce + 1,
+        }));
+        setActiveView('reaction-sim');
+      }
+    },
+    [handleSelectMolecule]
+  );
+
   const handleExportSnapshot = useCallback(() => {
     const dataUrl = stageRef.current?.exportSnapshotDataUrl();
     if (!dataUrl) return;
     const link = document.createElement('a');
     const filename =
-      activeView === 'atom-3d'
-        ? `atom-${activeElement.symbol}-${atomViewMode}.png`
-        : activeView === 'reaction-sim'
-          ? `reaction-stage-snapshot.png`
-          : `molecule-${selectedMolecule.id}.png`;
+      activeView === 'home'
+        ? 'chemvistas-orbital-showcase.png'
+        : activeView === 'atom-3d'
+          ? `atom-${activeElement.symbol}-${atomViewMode}.png`
+          : activeView === 'reaction-sim'
+            ? 'reaction-stage-snapshot.png'
+            : `molecule-${selectedMolecule.id}.png`;
     link.href = dataUrl;
     link.download = filename;
     document.body.appendChild(link);
@@ -333,7 +384,8 @@ export default function App() {
 
   const is3DStageActive =
     activeView === 'molecule-3d' || activeView === 'atom-3d';
-  const hasSnapshotStage = is3DStageActive || activeView === 'reaction-sim';
+  const hasSnapshotStage =
+    activeView === 'home' || is3DStageActive || activeView === 'reaction-sim';
 
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col bg-[#090D16] text-slate-100">
@@ -344,7 +396,7 @@ export default function App() {
           href="#top"
           onClick={(e) => {
             e.preventDefault();
-            setActiveView('molecule-3d');
+            setActiveView('home');
           }}
           className="text-[13px] sm:text-lg font-bold tracking-tight text-white whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-cyan-400"
         >
@@ -358,11 +410,11 @@ export default function App() {
         >
           {(
             [
+              ['home', '首页'],
               ['molecule-3d', '分子模型'],
               ['atom-3d', '三维原子'],
               ['reaction-sim', '反应模拟'],
               ['periodic-table', '元素周期表'],
-              ['catalog', '结构图鉴'],
             ] as [AppView, string][]
           ).map(([viewKey, label]) => {
             const active = activeView === viewKey;
@@ -399,12 +451,12 @@ export default function App() {
           ) : (
             <button
               type="button"
-              onClick={() => setActiveView('molecule-3d')}
+              onClick={() => setActiveView('home')}
               className="inline-flex items-center gap-1 px-2 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-semibold text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-lg transition-colors whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-cyan-300"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">返回三维视窗</span>
-              <span className="sm:hidden">三维</span>
+              <span className="hidden sm:inline">返回首页</span>
+              <span className="sm:hidden">首页</span>
             </button>
           )}
         </div>
@@ -412,7 +464,24 @@ export default function App() {
 
       {/* Main Split Workspace */}
       <main className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
-        {is3DStageActive ? (
+        {activeView === 'home' ? (
+          <div className="relative flex-1 min-h-0 flex w-full h-full">
+            <HomeShowcaseView
+              ref={stageRef}
+              onNavigateToDestination={handleNavigateFromHome}
+              onOpenCatalog={() => setActiveView('catalog')}
+              onOpenPeriodicTable={() => setActiveView('periodic-table')}
+            />
+            {exportNotice && (
+              <div
+                role="status"
+                className="pointer-events-none absolute top-4 right-5 z-20 px-3 py-1.5 rounded-lg bg-[#0E1628] border border-cyan-500/50 text-xs font-medium text-cyan-200 shadow-lg"
+              >
+                {exportNotice}
+              </div>
+            )}
+          </div>
+        ) : is3DStageActive ? (
           <>
             {/* Unobstructed 3D Viewport Stage + Unified Bottom Dock */}
             <div className="relative flex-1 flex flex-col lg:block lg:min-h-0 lg:h-full">
@@ -463,6 +532,7 @@ export default function App() {
                 moleculeCategoryFilter={moleculeCategoryFilter}
                 onChangeMoleculeCategory={setMoleculeCategoryFilter}
                 onOpenImportModal={() => setIsImportModalOpen(true)}
+                onOpenCatalog={() => setActiveView('catalog')}
                 activeElement={activeElement}
                 onSelectElement={(el) => {
                   handleSelectElement(el);
@@ -544,8 +614,11 @@ export default function App() {
         ) : activeView === 'reaction-sim' ? (
           <div className="relative flex-1 min-h-0 flex flex-col lg:flex-row w-full">
             <ReactionSimulatorView
+              key={`rxn-${reactionJumpState.nonce}`}
               ref={stageRef}
               molecules={allMolecules}
+              initialReactantAId={reactionJumpState.reactantAId}
+              initialReactantBId={reactionJumpState.reactantBId}
               onOpenMoleculeInWorkspace={handleOpenReactionMoleculeInWorkspace}
               onOpenImportModal={() => setIsImportModalOpen(true)}
             />

@@ -39,6 +39,8 @@ import { getSafeElementNameZh } from '../utils/glyphSupport';
 
 interface ReactionSimulatorViewProps {
   molecules: MoleculeModel[];
+  initialReactantAId?: string;
+  initialReactantBId?: string;
   onOpenMoleculeInWorkspace: (mol: MoleculeModel) => void;
   onOpenImportModal: () => void;
   onExportNotice?: (msg: string) => void;
@@ -372,11 +374,21 @@ export const ReactionSimulatorView = forwardRef<
   ChemistryStage3DHandle,
   ReactionSimulatorViewProps
 >(function ReactionSimulatorView(
-  { molecules, onOpenMoleculeInWorkspace, onOpenImportModal },
+  {
+    molecules,
+    initialReactantAId,
+    initialReactantBId,
+    onOpenMoleculeInWorkspace,
+    onOpenImportModal,
+  },
   stageRef
 ) {
-  const [reactantAId, setReactantAId] = useState<string>('methane');
-  const [reactantBId, setReactantBId] = useState<string>('oxygen');
+  const [reactantAId, setReactantAId] = useState<string>(
+    initialReactantAId ?? 'methane'
+  );
+  const [reactantBId, setReactantBId] = useState<string>(
+    initialReactantBId ?? 'oxygen'
+  );
 
   // Stage View Mode: 'pathway' (animated reactant -> TS -> product 3D transition) | 'species' (single molecule 3D inspector)
   const [stageViewMode, setStageViewMode] = useState<'pathway' | 'species'>(

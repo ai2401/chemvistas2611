@@ -46,6 +46,13 @@ import {
   buildReactionPathway,
   evaluateReactionPathwayFrame,
 } from './reactionPathway';
+import {
+  computeSatelliteWorldPosition,
+  HOME_HERO_MODELS,
+  HOME_SATELLITE_CASES,
+  normalizeMoleculeCoordsForStage,
+  validateHomeShowcaseIntegrity,
+} from './homeShowcase';
 
 test('all 118 IUPAC elements exist with exact electron shell sums and unique periodic grid cells', () => {
   assert.equal(ELEMENTS.length, 118);
@@ -472,5 +479,42 @@ test('3D reaction pathway maps conserved atoms 1-to-1 and interpolates bond brea
   assert.ok(inertMid.bonds.every((b) => b.opacity === 1));
 });
 
+test('home orbital showcase models have valid jump targets and collision-free 3D satellite orbits', () => {
+  assert.equal(validateHomeShowcaseIntegrity(), true);
+  assert.ok(HOME_HERO_MODELS.length >= 3);
+  assert.equal(HOME_SATELLITE_CASES.length, 8);
 
+  // Verify hero normalization fits C60 cleanly into target radius 2.05
+  const c60Norm = normalizeMoleculeCoordsForStage(
+    MOLECULE_BY_ID['fullerene-c60'],
+    2.05
+  );
+  assert.equal(c60Norm.atoms.length, 60);
+  for (const a of c60Norm.atoms) {
+    const r = Math.hypot(a.x, a.y, a.z);
+    assert.ok(r <= 2.06, `Expected C60 normalized radius <= 2.06, got ${r}`);
+  }
 
+  // Sample multiple orbital rotation angles and ensure zero collision with hero (0,0.28,0) or neighbor satellites
+  for (const angle of [0, 0.4, 1.1, Math.PI * 0.75, Math.PI * 1.5]) {
+    const positions = HOME_SATELLITE_CASES.map((_, idx) =>
+      computeSatelliteWorldPosition(idx, HOME_SATELLITE_CASES.length, angle)
+    );
+    for (let i = 0; i < positions.length; i++) {
+      const [xi, yi, zi] = positions[i];
+      const distFromHero = Math.hypot(xi, yi - 0.28, zi);
+      assert.ok(
+        distFromHero >= 5.2,
+        `Satellite ${i} too close to centerpiece: ${distFromHero}`
+      );
+      for (let j = i + 1; j < positions.length; j++) {
+        const [xj, yj, zj] = positions[j];
+        const pairDist = Math.hypot(xi - xj, yi - yj, zi - zj);
+        assert.ok(
+          pairDist >= 3.4,
+          `Satellites ${i} and ${j} too close: ${pairDist}`
+        );
+      }
+    }
+  }
+});
